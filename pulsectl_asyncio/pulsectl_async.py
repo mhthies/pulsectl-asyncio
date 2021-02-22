@@ -10,13 +10,13 @@ from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Coroutine
 
 from .pa_asyncio_mainloop import PythonMainLoop
-from .pulsectl import (
+from pulsectl.pulsectl import (
 	PulseError, PulseEventTypeEnum, PulseEventFacilityEnum, PulseEventInfo,
 	PulseEventMaskEnum, PulseLoopStop, PulseOperationFailed, PulseIndexError, PulseSinkInfo, PulseSourceInfo,
 	PulseCardInfo, PulseSinkInputInfo, PulseSourceOutputInfo, PulseClientInfo, PulseServerInfo, PulseModuleInfo,
 	is_list, PulseOperationInvalid, PulsePortInfo, PulseExtStreamRestoreInfo, PulseUpdateEnum, is_str,
 	assert_pulse_object, PulseDisconnected, unicode)
-from . import _pulsectl as c
+from pulsectl import _pulsectl as c
 
 
 class PulseAsync(object):
