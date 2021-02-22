@@ -14,7 +14,7 @@ setup(
     author='Michael Thies',
     author_email='mail@mhthies.de',
     url='https://github.com/mhthies/pulsectl-asyncio',
-    packages=find_packages(),
+    packages=['pulsectl_asyncio'],
     python_requires='~=3.6',
     install_requires=[
         'pulsectl==20.5.1',
