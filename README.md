@@ -10,9 +10,13 @@ In the [README file](https://github.com/mk-fg/python-pulse-control/blob/master/R
 However, none of these ways provides seamless integration into Python's asyncio event loop framework.
 
 *pulsectl-asyncio* uses a ctypes-based Python implementation of the `main_loop_api` of libpulse to use a Python asyncio event loop for libpulse's asynchronous event handling.
-With this event handling in place, no blocking calls into *libpulse* are required, so an asynchronous version for the high-level API of *pulsectl* can be provided.
-The `PulseAsync`, provided by *pulsectl-asyncio*, exactly mimics the `Pulse` class from *pulsectl*, except that all methods are declared `async` and asynchronously await the actions' results.
-Additionally, the API fo subscribing PulseAudio server events has been changed from a callback-based interface (`event_callback_set()` etc.) to a more asnycio-nic interface using an async generator. 
+With this event handling in place, no blocking calls into *libpulse* are required, so an asynchronous version for the high-level API of *pulsectl* can be provided:
+The `PulseAsync` class, provided by *pulsectl-asyncio*, exactly mimics the `Pulse` class from *pulsectl*, except that all methods are declared `async` and asynchronously await the actions' results.
+Additionally, the API fof subscribing to PulseAudio server events has been changed from a callback-based interface (`event_callback_set()` etc.) to a more asnycio-nic interface using an async generator.
+
+*pulsectl-asyncio* depends on *pulsectl* to reuse its ctype wrappers of *libpulse* as well as the `PulseObject` classes, which are used for modelling the PulseAudio action result structures as Python objects.
+The high-level API class `PulseAsync` has been copied from *pulsectl* and modified for asynchronous control flow.
+Thus, its architecture and major parts of its code are still similar to *pulsectl*'s code.
 
 
 ## Usage Examples
