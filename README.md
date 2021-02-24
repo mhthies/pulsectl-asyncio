@@ -42,6 +42,8 @@ Listening for server state change events:
 
 ```python
 import asyncio
+import signal
+from contextlib import suppress
 import pulsectl_asyncio
 
 # import pulsectl
@@ -49,14 +51,25 @@ import pulsectl_asyncio
 # print('Event facilities:', pulsectl.PulseEventFacilityEnum)
 # print('Event masks:', pulsectl.PulseEventMaskEnum)
 
-
-async def main():
+async def listen():
     async with pulsectl_asyncio.PulseAsync('event-printer') as pulse:
         async for event in pulse.subscribe_events('all'):
             print('Pulse event:', event)
 
-# cancel() Task or `break` from `for` loop to end loop
+async def main():
+    # Run listen() coroutine in task to allow cancelling it
+    listen_task = asyncio.create_task(listen())
 
+    # register signal handlers to cancel listener when program is asked to terminate
+    for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+        loop.add_signal_handler(sig, listen_task.cancel)
+    # Alternatively, the PulseAudio event subscription can be ended by breaking/returning from the `async for` loop
+
+    with suppress(asyncio.CancelledError):
+        await listen_task
+
+# Run event loop until main_task finishes
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
 ```
+
