@@ -23,14 +23,14 @@ from pulsectl.tests.dummy_instance import dummy_pulse_init, dummy_pulse_cleanup
 
 
 def async_test(f):
-    """
-    Decorator to transform async unittest coroutines into normal test methods
-    """
-    @functools.wraps(f)
-    def wrapper(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(f(*args, **kwargs))
-    return wrapper
+	"""
+	Decorator to transform async unittest coroutines into normal test methods
+	"""
+	@functools.wraps(f)
+	def wrapper(*args, **kwargs):
+		loop = asyncio.get_event_loop()
+		loop.run_until_complete(f(*args, **kwargs))
+	return wrapper
 
 
 @unittest.skipUnless(sys.version_info >= (3, 6), "Python 3.6 or higher required for asynchronous interface.")
