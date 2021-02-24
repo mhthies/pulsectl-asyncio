@@ -109,7 +109,12 @@ class PulseAsync(object):
 		loop = asyncio.get_event_loop()
 		wait_disconnected = loop.create_task(self._disconnected.wait())
 		other_task = loop.create_task(coroutine)
-		done, pending = await asyncio.wait((wait_disconnected, other_task), return_when=asyncio.FIRST_COMPLETED)
+		try:
+			done, pending = await asyncio.wait((wait_disconnected, other_task), return_when=asyncio.FIRST_COMPLETED)
+		except BaseException:  # Catches all Exception subclasses *and* (more important) CancelledError
+			for task in (wait_disconnected, other_task):
+				task.cancel()
+			raise
 		for task in pending:
 			task.cancel()
 		if other_task in pending:
