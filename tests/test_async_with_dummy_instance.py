@@ -1,9 +1,18 @@
+"""
+This module defines tests for the asynchronous high-level Python interface to libpulse.
+
+The code of this module is completely based on *pulsectl* version 20.5.1 (Git revision 471428c) and has been modified
+to test the asynchronous interface of the `PulseAsync` class instead of the `Pulse` class of *pulsectl*. To avoid
+redundant code, the init and cleanup functions for setting up the dummy PulseAudio server instance are imported from
+*pulsectl*'s tests module, rather than redefining them here.
+
+Copyright (c) 2016 Mike Kazantsev, 2021 Michael Thies
+"""
 import asyncio
 import atexit
 import functools
 import os
 import signal
-import subprocess
 import sys
 import unittest
 

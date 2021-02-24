@@ -1,7 +1,13 @@
-#
-# Copyright (c) 2014 George Filipkin, 2021 Michael Thies
-#
+"""
+This module provides an asynchronous high-level interface for PulseAudio actions, based on ctypes wrappers of libpulse
+and PulseAudio object abstraction from *pulsectl* package.
 
+The code of this module is completely based on *pulsectl* version 20.5.1 (Git revision 471428c). PulseObject class
+definitions have been removed to be imported from the original *pulsectl* module instead. The `Pulse` class has been
+modified to the `PulseAsync` class with an asynchronous interface.
+
+Copyright (c) 2014 George Filipkin, 2016 Mike Kazantsev, 2021 Michael Thies
+"""
 import asyncio
 import inspect
 import itertools as it

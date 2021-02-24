@@ -1,11 +1,20 @@
-#!/usr/bin/env python3
-#
-# Copyright (c) 2021 Michael Thies
-#
+"""
+This module provides a Python implementation of the `main_loop_api` of libpulse to use a Python asyncio event loop for
+libpulse's asynchronous event handling. This libpulse main loop implementation can be used as an alternative to
+libpulse's default mainloop, when setting up a libpulse *context* object via Python ctypes bindings.
+
+Usage::
+
+    loop = asyncio.get_event_loop()
+    main_loop = PythonMainLoop(loop)
+
+    context = libpulse.context_new(main_loop.api_pointer, b"my client name")
+
+Copyright (c) 2021 Michael Thies
+"""
 
 import asyncio
 import ctypes as c
-import enum
 import itertools
 import time
 from functools import partial
