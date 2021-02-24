@@ -73,3 +73,52 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
 ```
 
+Misc other tinkering:
+
+```python
+import asyncio
+import pulsectl_asyncio
+
+async def main():
+    pulse = pulsectl_asyncio.PulseAsync('my-client-name')
+    await pulse.connect()
+
+    print(await pulse.sink_list())
+    # [<PulseSinkInfo at 7f85cfd053d0 - desc='Built-in Audio', index=0L, mute=0, name='alsa-speakers', channels=2, volumes='44.0%, 44.0%'>]
+    print(await pulse.sink_input_list())
+    # [<PulseSinkInputInfo at 7fa06562d3d0 - index=181L, mute=0, name='mpv Media Player', channels=2, volumes='25.0%, 25.0%'>]
+
+    print((await pulse.sink_input_list())[0].proplist)  # Note the parentheses around `await` and the method call
+    # {'application.icon_name': 'mpv',
+    #  'application.language': 'C',
+    #  'application.name': 'mpv Media Player',
+    #  ...
+    #  'native-protocol.version': '30',
+    #  'window.x11.display': ':1.0'}
+
+    print(await pulse.source_list())
+    # [<PulseSourceInfo at 7fcb0615d8d0 - desc='Monitor of Built-in Audio', index=0L, mute=0, name='alsa-speakers.monitor', channels=2, volumes='100.0%, 100.0%'>,
+    #  <PulseSourceInfo at 7fcb0615da10 - desc='Built-in Audio', index=1L, mute=0, name='alsa-mic', channels=2, volumes='100.0%, 100.0%'>]
+
+    sink = (await pulse.sink_list())[0]
+    await pulse.volume_change_all_chans(sink, -0.1)
+    await pulse.volume_set_all_chans(sink, 0.5)
+
+    print((await pulse.server_info()).default_sink_name)
+    # 'alsa_output.pci-0000_00_14.2.analog-stereo'
+    await pulse.default_set(sink)
+
+    card = (await pulse.card_list())[0]
+    print(card.profile_list)
+    # [<PulseCardProfileInfo at 7f02e7e88ac8 - description='Analog Stereo Input', n_sinks=0, n_sources=1, name='input:analog-stereo', priority=60>,
+    #  <PulseCardProfileInfo at 7f02e7e88b70 - description='Analog Stereo Output', n_sinks=1, n_sources=0, name='output:analog-stereo', priority=6000>,
+    #  ...
+    #  <PulseCardProfileInfo at 7f02e7e9a4e0 - description='Off', n_sinks=0, n_sources=0, name='off', priority=0>]
+
+    await pulse.card_profile_set(card, 'output:hdmi-stereo')
+
+    pulse.close()  # No await here!
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+```
