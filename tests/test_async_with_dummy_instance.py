@@ -33,7 +33,6 @@ def async_test(f):
 	return wrapper
 
 
-@unittest.skipUnless(sys.version_info >= (3, 6), "Python 3.6 or higher required for asynchronous interface.")
 class AsyncDummyTests(unittest.TestCase):
 
 	proc = tmp_dir = None
@@ -438,7 +437,6 @@ class AsyncDummyTests(unittest.TestCase):
 				await paplay.wait()
 
 
-@unittest.skipUnless(sys.version_info >= (3, 6), "Python 3.6 or higher required for asynchronous interface.")
 class PulseCrashTestsAsync(unittest.TestCase):
 
 	@classmethod
