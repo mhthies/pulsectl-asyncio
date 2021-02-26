@@ -18,7 +18,7 @@ async def listen():
 
 async def main():
     # Run listen() coroutine in task to allow cancelling it
-    listen_task = asyncio.create_task(listen())
+    listen_task = loop.create_task(listen())
 
     # Schedule listen_task to be cancelled after 10 seconds
     # Alternatively, the PulseAudio event subscription can be ended by breaking/returning from the `async for` loop
