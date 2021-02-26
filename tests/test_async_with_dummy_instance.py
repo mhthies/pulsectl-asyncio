@@ -444,16 +444,17 @@ class PulseCrashTestsAsync(unittest.TestCase):
 		for sig in 'hup', 'term', 'int':
 			signal.signal(getattr(signal, 'sig{}'.format(sig).upper()), lambda sig,frm: sys.exit())
 
+	@async_test
 	async def test_crash_after_connect(self):
 		loop = asyncio.get_event_loop()
 		info = await loop.run_in_executor(None, dummy_pulse_init)
 		try:
 			with pulsectl_asyncio.PulseAsync('t', server=info.sock_unix) as pulse:
 				await pulse.connect()
-				for si in pulse.sink_list(): self.assertTrue(si)
+				for si in await pulse.sink_list(): self.assertTrue(si)
 				await loop.run_in_executor(None, info.proc.terminate)
 				await loop.run_in_executor(None, info.proc.wait)
-				with self.assertRaises(pulsectl.PulseOperationFailed):
+				with self.assertRaises((pulsectl._pulsectl.LibPulse.CallError, pulsectl.PulseOperationFailed)):
 					for si in await pulse.sink_list(): raise AssertionError(si)
 				self.assertFalse(pulse.connected)
 		finally: await loop.run_in_executor(None, dummy_pulse_cleanup, info)
