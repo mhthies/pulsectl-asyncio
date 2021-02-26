@@ -25,7 +25,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install coverage
+        pip install coverage codecov
     - name: Test with coverage + unittest
       run: |
         coverage run --source=pulsectl_asyncio,examples -m unittest
