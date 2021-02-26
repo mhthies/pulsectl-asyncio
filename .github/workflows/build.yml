@@ -29,6 +29,13 @@ jobs:
     - name: Test with coverage + unittest
       run: |
         coverage run --source=pulsectl_asyncio,examples -m unittest
+    - name: Report test coverage & Upload to Codecov.io
+      if: ${{ always() }}
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: |
+        coverage report -m
+        codecov
 
   package:
     runs-on: ubuntu-latest
