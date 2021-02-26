@@ -4,7 +4,8 @@ on:
   push:
     tags: [ v* ]
 
-  package:
+jobs:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
