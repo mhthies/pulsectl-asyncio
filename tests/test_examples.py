@@ -1,4 +1,5 @@
 import atexit
+import os
 import signal
 import unittest
 
@@ -17,6 +18,7 @@ class ExamplesTest(unittest.TestCase):
 		cls.instance_info = dummy_pulse_init()
 		for k, v in cls.instance_info.items():
 			setattr(cls, k, v)
+		os.environ['XDG_RUNTIME_DIR'] = cls.tmp_dir
 
 	@classmethod
 	def tearDownClass(cls):
