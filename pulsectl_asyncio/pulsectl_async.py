@@ -202,8 +202,11 @@ class PulseAsync(object):
 				cb = cb_t(
 					ft.partial(self._pulse_info_cb, info_cls, data, cb) if not singleton else
 					lambda ctx, info, userdata, cb=cb: data.append(info_cls(info[0])) or cb() )
-				pa_op = pulse_func( self._ctx,
-					*([index, cb, None] if index is not None else [cb, None]) )
+				try:
+					pa_op = pulse_func( self._ctx,
+						*([index, cb, None] if index is not None else [cb, None]) )
+				except c.ArgumentError as err: raise TypeError(err.args)
+				except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
 			c.pa.operation_unref(pa_op)
 			data = data or list()
 			if index is not None or singleton:
