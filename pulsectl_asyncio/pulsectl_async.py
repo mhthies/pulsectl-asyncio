@@ -10,9 +10,7 @@ Copyright (c) 2014 George Filipkin, 2016 Mike Kazantsev, 2021 Michael Thies
 """
 import asyncio
 import inspect
-import itertools as it
 import functools as ft
-from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Coroutine
 
 from .pa_asyncio_mainloop import PythonMainLoop
@@ -23,6 +21,43 @@ from pulsectl.pulsectl import (
 	is_list, PulseOperationInvalid, PulsePortInfo, PulseExtStreamRestoreInfo, PulseUpdateEnum, is_str,
 	assert_pulse_object, PulseDisconnected, unicode)
 from pulsectl import _pulsectl as c
+
+
+class _pulse_op_cb:
+	"""
+	Async context manager class, used to create a future in PulseAsync's _actions dict and the corresponding
+	callback method to be passed to the PulseAudio action call for resolving the future. The `__aexit__()` method is
+	the place, where the actual asynchronous magic of this library happens.
+
+	In `pulsectl`, it's implemented as a method of the Pulse class with @contextmanager, however, we need
+	@asynccontextmanager here, which is only available since Python 3.7.
+	"""
+	def __init__(self, async_pulse: "PulseAsync", raw=False):
+		self.raw = raw
+		self.future = None
+		self.async_pulse = async_pulse
+
+	async def __aenter__(self):
+		loop = asyncio.get_event_loop()
+		self.future = loop.create_future()
+
+		def cb(s=True):
+			if s:
+				loop.call_soon_threadsafe(self.future.set_result, None)
+			else:
+				loop.call_soon_threadsafe(self.future.set_exception, PulseOperationFailed())
+
+		if not self.raw:
+			cb = c.PA_CONTEXT_SUCCESS_CB_T(lambda ctx, s, d, cb=cb: cb(s))
+		self.async_pulse.waiting_futures.add(self.future)
+		return cb
+
+	async def __aexit__(self, exc_type, exc_val, exc_tb):
+		try:
+			if not exc_type:
+				await self.future
+		finally:
+			self.async_pulse.waiting_futures.discard(self.future)
 
 
 class PulseAsync(object):
@@ -40,8 +75,6 @@ class PulseAsync(object):
 		self._disconnected = asyncio.Event(loop=loop)
 		self._disconnected.set()
 		self._ctx = self._loop = None
-		self._actions, self._action_ids = dict(),\
-			it.chain.from_iterable(map(range, it.repeat(2**30)))
 		self.init(loop)
 
 	def init(self, loop: Optional[asyncio.AbstractEventLoop]):
@@ -55,6 +88,7 @@ class PulseAsync(object):
 		self.event_facilities = sorted(PulseEventFacilityEnum._values.values())
 		self.event_masks = sorted(PulseEventMaskEnum._values.values())
 		self.event_callback = None
+		self.waiting_futures = set()
 
 	def _ctx_init(self):
 		if self._ctx:
@@ -137,7 +171,7 @@ class PulseAsync(object):
 			elif state in [c.PA_CONTEXT_FAILED, c.PA_CONTEXT_TERMINATED]:
 				self._connected.clear()
 				self._disconnected.set()
-				for future in self._actions.values():
+				for future in self.waiting_futures:
 					future.set_exception(PulseDisconnected())
 
 	def _pulse_subscribe_cb(self, ctx, ev, idx, userdata):
@@ -148,20 +182,6 @@ class PulseAsync(object):
 		ev_t = PulseEventTypeEnum._c_val(n, 'ev.type.{}'.format(n))
 		try: self.event_callback(PulseEventInfo(ev_t, ev_fac, idx))
 		except PulseLoopStop: self._loop_stop = True
-
-	@asynccontextmanager
-	async def _pulse_op_cb(self, raw=False):
-		act_id = next(self._action_ids)
-		self._actions[act_id] = self._loop.loop.create_future()
-		try:
-			def cb (s=True,k=act_id):
-				if s: self._loop.loop.call_soon_threadsafe(self._actions[k].set_result, None)
-				else: self._loop.loop.call_soon_threadsafe(self._actions[k].set_exception, PulseOperationFailed(act_id))
-			if not raw: cb = c.PA_CONTEXT_SUCCESS_CB_T(lambda ctx,s,d,cb=cb: cb(s))
-			yield cb
-			await self._actions[act_id]
-		finally: self._actions.pop(act_id, None)
-
 
 	def _pulse_info_cb(self, info_cls, data_list, done_cb, ctx, info, eof, userdata):
 		# No idea where callbacks with "userdata != NULL" come from,
@@ -178,7 +198,7 @@ class PulseAsync(object):
 	def _pulse_get_list(cb_t, pulse_func, info_cls, singleton=False, index_arg=True):
 		async def _wrapper_method(self, index=None):
 			data = list()
-			async with self._pulse_op_cb(raw=True) as cb:
+			async with _pulse_op_cb(self, raw=True) as cb:
 				cb = cb_t(
 					ft.partial(self._pulse_info_cb, info_cls, data, cb) if not singleton else
 					lambda ctx, info, userdata, cb=cb: data.append(info_cls(info[0])) or cb() )
@@ -252,7 +272,7 @@ class PulseAsync(object):
 			pulse_args = func(*args, **kws) if func else list()
 			if not is_list(pulse_args): pulse_args = [pulse_args]
 			if index_arg: pulse_args = [index] + list(pulse_args)
-			async with self._pulse_op_cb() as cb:
+			async with _pulse_op_cb(self) as cb:
 				try: pulse_op(self._ctx, *(list(pulse_args) + [cb, None]))
 				except c.ArgumentError as err: raise TypeError(err.args)
 				except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
@@ -311,7 +331,7 @@ class PulseAsync(object):
 		if is_list(args): args = ' '.join(args)
 		name, args = map(c.force_bytes, [name, args])
 		data = list()
-		async with self._pulse_op_cb(raw=True) as cb:
+		async with _pulse_op_cb(self, raw=True) as cb:
 			cb = c.PA_CONTEXT_INDEX_CB_T(
 				lambda ctx, index, userdata, cb=cb: data.append(index) or cb() )
 			try: c.pa.context_load_module(self._ctx, name, args, cb, None)
@@ -325,7 +345,7 @@ class PulseAsync(object):
 	async def stream_restore_test(self):
 		'Returns module-stream-restore version int (e.g. 1) or None if it is unavailable.'
 		data = list()
-		async with self._pulse_op_cb(raw=True) as cb:
+		async with _pulse_op_cb(self, raw=True) as cb:
 			cb = c.PA_EXT_STREAM_RESTORE_TEST_CB_T(
 				lambda ctx, version, userdata, cb=cb: data.append(version) or cb() )
 			try: c.pa.ext_stream_restore_test(self._ctx, cb, None)
@@ -443,7 +463,7 @@ class PulseAsync(object):
 	async def _event_mask_set(self, *masks):
 		mask = 0
 		for m in masks: mask |= PulseEventMaskEnum[m]._c_val
-		async with self._pulse_op_cb() as cb:
+		async with _pulse_op_cb(self) as cb:
 			c.pa.context_subscribe(self._ctx, mask, cb, None)
 
 	async def subscribe_events(self, *masks) -> AsyncIterator[PulseEventInfo]:
@@ -531,7 +551,7 @@ class PulseAsync(object):
 		sink = str(sink) if sink is not None else None
 		proplist = c.pa.proplist_from_string(proplist_str) if proplist_str else None
 		volume = int(round(volume*c.PA_VOLUME_NORM))
-		async with self._pulse_op_cb() as cb:
+		async with _pulse_op_cb(self) as cb:
 			try:
 				if not proplist:
 					c.pa.context_play_sample(self._ctx, name, sink, volume, cb, None)
