@@ -101,10 +101,11 @@ class PulseAsync(object):
 		c.pa.context_set_state_callback(self._ctx, self._pa_state_cb, None)
 		c.pa.context_set_subscribe_callback(self._ctx, self._pa_subscribe_cb, None)
 
-	async def connect(self, autospawn=False, wait=False):
+	async def connect(self, autospawn=False, wait=False, timeout=None):
 		'''Connect to pulseaudio server.
 			"autospawn" option will start new pulse daemon, if necessary.
-			Specifying "wait" option will make function block until pulseaudio server appears.'''
+			Specifying "wait" option will make function block until pulseaudio server appears.
+			"timeout" (in seconds) will raise asyncio.TimeoutError if connection not established within it.'''
 		if self._connected.is_set() or self._disconnected.is_set():
 			self._ctx_init()
 		flags = 0
@@ -114,17 +115,24 @@ class PulseAsync(object):
 			flags |= c.PA_CONTEXT_NOFAIL
 		try:
 			c.pa.context_connect(self._ctx, self.server, flags, None)
-			await self._wait_disconnect_or(self._connected.wait())
+			if not timeout:
+				await self._wait_disconnect_or(self._connected.wait())
+			else:
+				await asyncio.wait_for(self._wait_disconnect_or(self._connected.wait()), timeout)
 		except (c.pa.CallError, PulseDisconnected) as e:
 			self._disconnected.set()
 			raise PulseError('Failed to connect to pulseaudio server') from e
+		except asyncio.TimeoutError:
+			self.disconnect()
+			await self._disconnected.wait()
+			raise
 
 	@property
 	def connected(self):
 		return self._connected.is_set()
 
 	def disconnect(self):
-		if not self._ctx or not self._connected.is_set():
+		if not self._ctx or self._disconnected.is_set():
 			return
 		c.pa.context_disconnect(self._ctx)
 

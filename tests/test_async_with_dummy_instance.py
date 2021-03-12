@@ -82,6 +82,38 @@ class AsyncDummyTests(unittest.TestCase):
 		self.assertEqual(vars(si), vars(si6))
 
 	@async_test
+	async def test_connect_timeout(self):
+		self.sock_delay_thread_ready.wait(timeout=2)
+		async with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
+			si = await pulse.server_info()
+
+		async with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp_delay) as pulse:
+			sid = await pulse.server_info()
+		self.assertEqual(vars(si), vars(sid))
+		self.sock_delay_thread_disco.set()
+
+		with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp_delay) as pulse:
+			await pulse.connect()
+			sid = await pulse.server_info()
+		self.assertEqual(vars(si), vars(sid))
+		self.sock_delay_thread_disco.set()
+
+		with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp_delay) as pulse:
+			await pulse.connect(timeout=1.0)
+			sid = await pulse.server_info()
+		self.assertEqual(vars(si), vars(sid))
+		self.sock_delay_thread_disco.set()
+
+		with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp_delay) as pulse:
+			with self.assertRaises(asyncio.TimeoutError):
+				await pulse.connect(timeout=0.1)
+			self.sock_delay_thread_disco.set()
+			await pulse.connect(timeout=1.0)
+			sid = await pulse.server_info()
+		self.assertEqual(vars(si), vars(sid))
+		self.sock_delay_thread_disco.set()
+
+	@async_test
 	async def test_server_info(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
