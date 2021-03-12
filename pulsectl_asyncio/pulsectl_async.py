@@ -12,6 +12,7 @@ import asyncio
 import inspect
 import functools as ft
 from typing import Optional, AsyncIterator, Coroutine
+from contextlib import suppress
 
 from .pa_asyncio_mainloop import PythonMainLoop
 from pulsectl.pulsectl import (
@@ -503,47 +504,96 @@ class PulseAsync(object):
 			Sample stream masquerades as
 				application.id=org.PulseAudio.pavucontrol to avoid being listed in various mixer apps.
 			Example - get peak for specific sink input "si" for 0.8 seconds:
-				pulse.get_peak_sample(pulse.sink_info(si.sink).monitor_source, 0.8, si.index)'''
-		samples, proplist = [0], c.pa.proplist_from_string('application.id=org.PulseAudio.pavucontrol')
-		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32BE, rate=25, channels=1)
+				await pulse.get_peak_sample(await pulse.sink_info(si.sink).monitor_source, 0.8, si.index)'''
+		samples = [0.0]
+
+		async def subscriber():
+			async for volume in self.subscribe_peak_sample(source, 25, stream_idx):
+				samples[0] = max(samples[0], volume)
+
+		task = asyncio.get_event_loop().create_task(subscriber())
+		try:
+			await asyncio.wait_for(task, timeout)
+		except asyncio.TimeoutError:
+			task.cancel()
+			with suppress(asyncio.CancelledError):
+				await task
+
+		return min(1.0, samples[0])
+
+	async def subscribe_peak_sample(self, source, rate=25, stream_idx=None) -> AsyncIterator[float]:
+		"""
+		Subscribe to a (downsampled) audio stream to monitor audio volume.
+
+		Using PulseAudio's `stream_connect_record` method, the stream can either be a normal record stream from a
+		source, a stream from a sink monitor source or a monitor stream of a specific sink input. To monitor the volume,
+		we use the PA_SAMPLE_FLOAT32BE sample format. This method returns an asynchronous generator, which yields the
+		volume samples as they are streamed from the PulseAudio server.
+
+		Example usage for monitoring a source (e.g. microphone input) with 5Hz::
+
+		  async for volume in pulse.subscribe_peak_sample(source.name, rate=5):
+		      print("volume =", volume)
+
+		Example usage for monitoring a sink input (i.e. application output):
+
+		  async for volume in pulse.subscribe_peak_sample(await pulse.sink_info(si.sink).monitor_source,
+		                                                  stream_idx=si.index):
+		      print("volume = ", volume)
+
+		:param source: Name (!) of the source to monitor its volume. Use `PulseSinkInfo.monitor_source` to get the
+			correct source name for monitoring a sink or an input of that sink.
+		:param rate: Sample rate, i.e. rate of volume measurements yielded by the generator in 1/second
+		:param stream_idx: When `source` is a sink monitor source, specify the index (!) of a sink input, to monitor
+			this single sink input stream instead of the sink sum signal.
+		"""
+		proplist = c.pa.proplist_from_string('')
+		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32BE, rate=rate, channels=1)
 		s = c.pa.stream_new_with_proplist(self._ctx, 'peak detect', c.byref(ss), None, proplist)
+		queue = asyncio.Queue()
 		c.pa.proplist_free(proplist)
 
 		@c.PA_STREAM_REQUEST_CB_T
-		def read_cb(s, bs, userdata):
-			buff, bs = c.c_void_p(), c.c_int(bs)
+		def read_cb(s, nbytes, _userdata):
+			bs = c.c_int(nbytes)
+			buff = c.c_void_p()
 			c.pa.stream_peek(s, buff, c.byref(bs))
 			try:
-				if not buff or bs.value < 4: return
+				if not buff or bs.value < 4:
+					return
 				# This assumes that native byte order for floats is BE, same as pavucontrol
-				samples[0] = max(samples[0], c.cast(buff, c.POINTER(c.c_float))[0])
+				queue.put_nowait(c.cast(buff, c.POINTER(c.c_float))[0])
 			finally:
 				# stream_drop() flushes buffered data (incl. buff=NULL "hole" data)
 				# stream.h: "should not be called if the buffer is empty"
-				if bs.value: c.pa.stream_drop(s)
+				if bs.value:
+					c.pa.stream_drop(s)
 
-		if stream_idx is not None: c.pa.stream_set_monitor_stream(s, stream_idx)
+		if stream_idx is not None:
+			c.pa.stream_set_monitor_stream(s, stream_idx)
 		c.pa.stream_set_read_callback(s, read_cb, None)
-		if source is not None: source = unicode(source).encode('utf-8')
+		if source is not None:
+			source = unicode(source).encode('utf-8')
+
 		try:
-			c.pa.stream_connect_record( s, source,
+			c.pa.stream_connect_record(
+				s, source,
 				c.PA_BUFFER_ATTR(fragsize=4, maxlength=2**32-1),
 				c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT |
-					c.PA_STREAM_ADJUST_LATENCY | c.PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND )
+					c.PA_STREAM_ADJUST_LATENCY | c.PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND)
 		except c.pa.CallError:
 			c.pa.stream_unref(s)
 			raise
 
 		try:
-			await asyncio.wait_for(self._disconnected.wait(), timeout)
-			raise PulseDisconnected()
-		except asyncio.TimeoutError:
-			pass
-
-		try: c.pa.stream_disconnect(s)
-		except c.pa.CallError: pass # stream was removed
-
-		return min(1.0, samples[0])
+			while True:
+				yield await self._wait_disconnect_or(queue.get())
+		finally:
+			try:
+				c.pa.stream_disconnect(s)
+			except c.pa.CallError:
+				pass  # stream was removed
+			c.pa.stream_unref(s)
 
 	async def play_sample(self, name, sink=None, volume=1.0, proplist_str=None):
 		'''Play specified sound sample,
