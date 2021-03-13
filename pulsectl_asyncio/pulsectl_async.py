@@ -587,8 +587,7 @@ class PulseAsync(object):
 			c.pa.stream_connect_record(
 				s, source,
 				c.PA_BUFFER_ATTR(fragsize=4, maxlength=2**32-1),
-				c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT |
-					c.PA_STREAM_ADJUST_LATENCY | c.PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND)
+				c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT | c.PA_STREAM_ADJUST_LATENCY)
 		except c.pa.CallError:
 			c.pa.stream_unref(s)
 			raise
