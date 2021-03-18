@@ -545,8 +545,8 @@ class PulseAsync(object):
 
 		Example usage for monitoring a sink input (i.e. application output):
 
-		  async for volume in pulse.subscribe_peak_sample(await pulse.sink_info(si.sink).monitor_source,
-		                                                  stream_idx=si.index):
+		  async for volume in pulse.subscribe_peak_sample((await pulse.sink_info(sink_input.sink)).monitor_source,
+		                                                  stream_idx=sink_input.index):
 		      print("volume = ", volume)
 
 		:param source: Name (!) of the source to monitor its volume. Use `PulseSinkInfo.monitor_source` to get the
