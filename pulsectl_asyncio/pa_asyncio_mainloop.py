@@ -16,6 +16,7 @@ Copyright (c) 2021 Michael Thies
 import asyncio
 import ctypes as c
 import itertools
+import sysconfig
 import time
 from functools import partial
 from typing import Set, Optional, Dict
@@ -30,9 +31,19 @@ class pa_mainloop_api(PA_MAINLOOP_API):
     pass
 
 
+# Find out the platform specific type of time_t
+time_t_size = sysconfig.get_config_var('SIZEOF_TIME_T')
+if time_t_size == sysconfig.get_config_var('SIZEOF_LONG_LONG'):
+    time_t = c.c_longlong
+elif time_t_size == sysconfig.get_config_var('SIZEOF_LONG'):
+    time_t = c.c_long
+else:
+    raise RuntimeError("Current platform has unexpected sizeof(time_t)")
+
+
 class timeval(c.Structure):
     _fields_ = [
-        ('tv_sec', c.c_longlong),
+        ('tv_sec', time_t),
         ('tv_usec', c.c_long),
     ]
 
