@@ -1,7 +1,9 @@
 import atexit
 import os
 import signal
+import sys
 import unittest
+import io
 
 from pulsectl.tests.dummy_instance import dummy_pulse_cleanup, dummy_pulse_init
 
@@ -30,3 +32,11 @@ class ExamplesTest(unittest.TestCase):
 
 	def test_subscribe(self):
 		import examples.subscribe_example
+
+	def test_subscribe_peak(self):
+		_stdout = sys.stdout
+		sys.stdout = io.StringIO()
+		try:
+			import examples.subscribe_peak_example
+		finally:
+			sys.stdout = _stdout
