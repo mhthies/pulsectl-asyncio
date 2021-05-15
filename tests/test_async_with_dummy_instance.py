@@ -19,7 +19,7 @@ import unittest
 import pulsectl
 import pulsectl_asyncio
 from pulsectl.pulsectl import unicode
-from pulsectl.tests.dummy_instance import dummy_pulse_init, dummy_pulse_cleanup
+from pulsectl.tests.test_with_dummy_instance import dummy_pulse_init, dummy_pulse_cleanup
 
 
 def async_test(f):

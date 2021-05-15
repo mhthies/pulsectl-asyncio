@@ -17,7 +17,7 @@ setup(
     packages=['pulsectl_asyncio'],
     python_requires='~=3.6',
     install_requires=[
-        'pulsectl>=20.5.1,<=21.3.4',
+        'pulsectl>=20.5.1,<=21.5.17',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',

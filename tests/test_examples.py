@@ -5,7 +5,7 @@ import sys
 import unittest
 import io
 
-from pulsectl.tests.dummy_instance import dummy_pulse_cleanup, dummy_pulse_init
+from pulsectl.tests.test_with_dummy_instance import dummy_pulse_cleanup, dummy_pulse_init
 
 
 class ExamplesTest(unittest.TestCase):
