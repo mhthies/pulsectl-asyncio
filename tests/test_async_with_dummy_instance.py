@@ -250,6 +250,9 @@ class AsyncDummyTests(unittest.TestCase):
 			self.assertEqual(len(await pulse.sink_list()), 3)
 			await pulse.module_unload(idx)
 			self.assertEqual(len(await pulse.sink_list()), 2)
+			with self.assertRaises(pulsectl.PulseError):
+				await pulse.module_load('module-that-does-not-exist')
+			self.assertEqual(len(await pulse.sink_list()), 2)
 
 	@async_test
 	async def test_stream(self):
