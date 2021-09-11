@@ -1,1 +1,1 @@
-pulsectl==21.9.2
+pulsectl==21.9.1
