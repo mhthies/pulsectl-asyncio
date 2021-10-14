@@ -20,7 +20,7 @@ from pulsectl.pulsectl import (
 	PulseEventMaskEnum, PulseLoopStop, PulseOperationFailed, PulseIndexError, PulseSinkInfo, PulseSourceInfo,
 	PulseCardInfo, PulseSinkInputInfo, PulseSourceOutputInfo, PulseClientInfo, PulseServerInfo, PulseModuleInfo,
 	is_list, PulseOperationInvalid, PulsePortInfo, PulseExtStreamRestoreInfo, PulseUpdateEnum, is_str,
-	assert_pulse_object, PulseDisconnected, unicode)
+	assert_pulse_object, PulseDisconnected, unicode, Enum)
 from pulsectl import _pulsectl as c
 
 
@@ -90,6 +90,13 @@ class PulseAsync(object):
 		self.event_masks = sorted(PulseEventMaskEnum._values.values())
 		self.event_callback = None
 		self.waiting_futures = set()
+
+		chan_names = dict()
+		for n in range(256):
+			name = c.pa.channel_position_to_string(n)
+			if name is None: break
+			chan_names[n] = name
+		self.channel_list_enum = Enum('channel_pos', chan_names)
 
 	def _ctx_init(self):
 		if self._ctx:
