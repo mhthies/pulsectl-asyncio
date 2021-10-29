@@ -20,6 +20,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install Ubuntu dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install -y libpulse0 pulseaudio
     - name: Install Python dependencies
       run: |
