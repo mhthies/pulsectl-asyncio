@@ -13,6 +13,7 @@ import inspect
 import functools as ft
 from typing import Optional, AsyncIterator, Coroutine
 from contextlib import suppress
+import sys
 
 from .pa_asyncio_mainloop import PythonMainLoop
 from pulsectl.pulsectl import (
@@ -72,8 +73,8 @@ class PulseAsync(object):
 				have control over options passed to connect() method.'''
 		self.name = client_name or 'pulsectl'
 		self.server = server
-		self._connected = asyncio.Event(loop=loop)
-		self._disconnected = asyncio.Event(loop=loop)
+		self._connected = asyncio.Event(**({"loop": loop} if sys.version_info[:2] < (3, 8) else {}))
+		self._disconnected = asyncio.Event(**({"loop": loop} if sys.version_info[:2] < (3, 8) else {}))
 		self._disconnected.set()
 		self._ctx = self._loop = None
 		self.init(loop)
