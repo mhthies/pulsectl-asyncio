@@ -13,6 +13,8 @@ import inspect
 import functools as ft
 from typing import Optional, AsyncIterator, Coroutine
 from contextlib import suppress
+import sys
+from warnings import warn
 
 from .pa_asyncio_mainloop import PythonMainLoop
 from pulsectl.pulsectl import (
@@ -70,10 +72,13 @@ class PulseAsync(object):
 			Specifying "connect=False" here prevents that, but be sure to call connect() later.
 			"connect=False" can also be used here to
 				have control over options passed to connect() method.'''
+		if loop:
+			warn("The parameter 'loop' is deprecated and will be removed in future versions, since it is no longer necessary", DeprecationWarning)
+
 		self.name = client_name or 'pulsectl'
 		self.server = server
-		self._connected = asyncio.Event(loop=loop)
-		self._disconnected = asyncio.Event(loop=loop)
+		self._connected = asyncio.Event(**({"loop": loop} if sys.version_info[:2] < (3, 8) else {}))
+		self._disconnected = asyncio.Event(**({"loop": loop} if sys.version_info[:2] < (3, 8) else {}))
 		self._disconnected.set()
 		self._ctx = self._loop = None
 		self.init(loop)
