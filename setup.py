@@ -7,7 +7,7 @@ with open(os.path.join(os.path.dirname(__file__), 'README.md'), encoding='utf-8'
 
 setup(
     name='pulsectl-asyncio',
-    version='0.1.10',
+    version='0.2.0',
     description='Asyncio frontend for the pulsectl Python bindings of libpulse',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -25,6 +25,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'License :: OSI Approved :: MIT License',
         'Framework :: AsyncIO',
         'Topic :: Multimedia :: Sound/Audio :: Mixers',
