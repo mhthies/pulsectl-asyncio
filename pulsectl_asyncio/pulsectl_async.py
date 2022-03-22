@@ -543,7 +543,8 @@ class PulseAsync(object):
 
 		return min(1.0, samples[0])
 
-	async def subscribe_peak_sample(self, source, rate=25, stream_idx=None) -> AsyncIterator[float]:
+	async def subscribe_peak_sample(self, source, rate=25, stream_idx=None, allow_suspend=False
+			) -> AsyncIterator[float]:
 		"""
 		Subscribe to a (downsampled) audio stream to monitor audio volume.
 
@@ -568,6 +569,9 @@ class PulseAsync(object):
 		:param rate: Sample rate, i.e. rate of volume measurements yielded by the generator in 1/second
 		:param stream_idx: When `source` is a sink monitor source, specify the index (!) of a sink input, to monitor
 			this single sink input stream instead of the sink sum signal.
+		:param allow_suspend: If True, the flat DONT_INHIBIT_AUTO_SUSPEND is set on the stream, such that Pulse Audio
+			will automatically suspend the source or sink after some seconds, despite our monitor stream running. This
+			is useful for monitoring sinks, but prevents actively monitoring sources for more than a few seconds.
 		"""
 		proplist = c.pa.proplist_from_string('')
 		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32BE, rate=rate, channels=1)
@@ -597,11 +601,14 @@ class PulseAsync(object):
 		if source is not None:
 			source = unicode(source).encode('utf-8')
 
+		flags = c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT | c.PA_STREAM_ADJUST_LATENCY
+		if allow_suspend:
+			flags |= c.PA_STREAM_DONT_INHIBIT_AUTO_SUSPEND
 		try:
 			c.pa.stream_connect_record(
 				s, source,
 				c.PA_BUFFER_ATTR(fragsize=4, maxlength=2**32-1),
-				c.PA_STREAM_DONT_MOVE | c.PA_STREAM_PEAK_DETECT | c.PA_STREAM_ADJUST_LATENCY)
+				flags)
 		except c.pa.CallError:
 			c.pa.stream_unref(s)
 			raise
