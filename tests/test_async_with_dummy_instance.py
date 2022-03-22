@@ -76,10 +76,11 @@ class AsyncDummyTests(unittest.TestCase):
 			await pulse.connect()
 			si4 = await pulse.server_info()
 		self.assertEqual(vars(si), vars(si4))
-		with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp6) as pulse:
-			await pulse.connect()
-			si6 = await pulse.server_info()
-		self.assertEqual(vars(si), vars(si6))
+		if int(self.sock_tcp6.rsplit(':', 1)[-1]):
+			with pulsectl_asyncio.PulseAsync('t', server=self.sock_tcp6) as pulse:
+				await pulse.connect()
+				si6 = await pulse.server_info()
+			self.assertEqual(vars(si), vars(si6))
 
 	@async_test
 	async def test_connect_timeout(self):
