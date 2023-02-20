@@ -216,6 +216,7 @@ class PulseAsync(object):
 		if eof: done_cb()
 		else: data_list.append(info_cls(info[0]))
 
+	@staticmethod
 	def _pulse_get_list(cb_t, pulse_func, info_cls, singleton=False, index_arg=True):
 		async def _wrapper_method(self, index=None):
 			data = list()
@@ -285,6 +286,7 @@ class PulseAsync(object):
 	module_list = _pulse_get_list(
 		c.PA_MODULE_INFO_CB_T, c.pa.context_get_module_info_list, PulseModuleInfo )
 
+	@staticmethod
 	def _pulse_method_call(pulse_op, func=None, index_arg=True):
 		'''Creates following synchronous wrapper for async pa_operation callable:
 			wrapper(index, ...) -> pulse_op(index, [*]args_func(...))
@@ -384,6 +386,7 @@ class PulseAsync(object):
 		c.pa.ext_stream_restore_read, PulseExtStreamRestoreInfo, index_arg=False )
 	stream_restore_list = stream_restore_read # for consistency with other *_list methods
 
+	@staticmethod
 	@ft.partial(_pulse_method_call, c.pa.ext_stream_restore_write, index_arg=False)
 	def stream_restore_write( obj_name_or_list,
 			mode='merge', apply_immediately=False, **obj_kws ):
@@ -404,6 +407,7 @@ class PulseAsync(object):
 			for k,t in obj_struct._fields_: setattr(dst_struct, k, getattr(obj_struct, k))
 		return mode, obj_array, len(obj_array), int(bool(apply_immediately))
 
+	@staticmethod
 	@ft.partial(_pulse_method_call, c.pa.ext_stream_restore_delete, index_arg=False)
 	def stream_restore_delete(obj_name_or_list):
 		'''Can be passed string name,
