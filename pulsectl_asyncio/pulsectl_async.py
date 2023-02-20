@@ -300,11 +300,15 @@ class PulseAsync(object):
 				try: pulse_op(self._ctx, *(list(pulse_args) + [cb, None]))
 				except c.ArgumentError as err: raise TypeError(err.args)
 				except c.pa.CallError as err: raise PulseOperationInvalid(err.args[-1])
-		func_args = list(inspect.getargspec(func or (lambda: None)))
-		func_args[0] = list(func_args[0])
-		if index_arg: func_args[0] = ['index'] + func_args[0]
+
+		signature = inspect.signature(func or (lambda: None))
+		if index_arg:
+			signature.replace(
+				parameters=
+				[inspect.Parameter("index", inspect.Parameter.POSITIONAL_OR_KEYWORD)]
+				+ list(signature.parameters.values()))
 		_wrapper.__name__ = '...'
-		_wrapper.__doc__ = 'Signature: func' + inspect.formatargspec(*func_args)
+		_wrapper.__doc__ = 'Signature: func' + str(signature)
 		if func.__doc__: _wrapper.__doc__ += '\n\n' + func.__doc__
 		return _wrapper
 
