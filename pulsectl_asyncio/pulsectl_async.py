@@ -522,7 +522,7 @@ class PulseAsync(object):
 			"source" can be either int index of pulseaudio source
 				(i.e. source.index), its name (source.name), or None to use default source.
 			Resulting value is what pulseaudio returns as
-				PA_SAMPLE_FLOAT32BE float after "timeout" seconds.
+				PA_SAMPLE_FLOAT32NE float after "timeout" seconds.
 			If specified source does not exist, 0 should be returned after timeout.
 			This can be used to detect if there's any sound
 				on the microphone or any sound played through a sink via its monitor_source index,
@@ -554,7 +554,7 @@ class PulseAsync(object):
 
 		Using PulseAudio's `stream_connect_record` method, the stream can either be a normal record stream from a
 		source, a stream from a sink monitor source or a monitor stream of a specific sink input. To monitor the volume,
-		we use the PA_SAMPLE_FLOAT32BE sample format. This method returns an asynchronous generator, which yields the
+		we use the PA_SAMPLE_FLOAT32NE sample format. This method returns an asynchronous generator, which yields the
 		volume samples as they are streamed from the PulseAudio server.
 
 		Example usage for monitoring a source (e.g. microphone input) with 5Hz::
@@ -578,7 +578,7 @@ class PulseAsync(object):
 			is useful for monitoring sinks, but prevents actively monitoring sources for more than a few seconds.
 		"""
 		proplist = c.pa.proplist_from_string('')
-		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32BE, rate=rate, channels=1)
+		ss = c.PA_SAMPLE_SPEC(format=c.PA_SAMPLE_FLOAT32NE, rate=rate, channels=1)
 		s = c.pa.stream_new_with_proplist(self._ctx, 'peak detect', c.byref(ss), None, proplist)
 		queue = asyncio.Queue()
 		c.pa.proplist_free(proplist)
@@ -591,7 +591,6 @@ class PulseAsync(object):
 			try:
 				if not buff or bs.value < 4:
 					return
-				# This assumes that native byte order for floats is BE, same as pavucontrol
 				queue.put_nowait(c.cast(buff, c.POINTER(c.c_float))[0])
 			finally:
 				# stream_drop() flushes buffered data (incl. buff=NULL "hole" data)
