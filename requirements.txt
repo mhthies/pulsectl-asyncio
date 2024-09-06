@@ -1,1 +1,1 @@
-pulsectl==24.4.0
+pulsectl==24.8.0
