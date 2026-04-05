@@ -174,7 +174,7 @@ class PythonMainLoop:
             event.read()
 
     def stop(self, retval: int) -> None:
-        for event in itertools.chain(self.defer_events, self.io_writer_events, self.time_events):
+        for event in itertools.chain(self.defer_events, self.io_events, self.time_events):
             event.free()
         self.retval = retval
 
