@@ -18,6 +18,7 @@ async def listen():
 
 async def main():
     # Run listen() coroutine in task to allow cancelling it
+    loop = asyncio.get_event_loop()
     listen_task = loop.create_task(listen())
 
     # Schedule listen_task to be cancelled after 10 seconds
@@ -33,5 +34,4 @@ async def main():
 
 
 # Run event loop until main_task finishes
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())

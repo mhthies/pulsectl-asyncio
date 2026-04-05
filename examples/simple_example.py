@@ -6,5 +6,4 @@ async def main():
         for sink in await pulse.sink_list():
             await pulse.volume_change_all_chans(sink, 0.1)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())

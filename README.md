@@ -36,8 +36,7 @@ async def main():
         for sink in await pulse.sink_list():
             await pulse.volume_change_all_chans(sink, 0.1)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())
 ``` 
 
 Listening for server state change events:
@@ -71,8 +70,7 @@ async def main():
         await listen_task
 
 # Run event loop until main_task finishes
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())
 ```
 
 Misc other tinkering:
@@ -121,8 +119,7 @@ async def main():
 
     pulse.close()  # No await here!
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())
 ```
 
 Monitor output level of default sink on the command line:
@@ -162,6 +159,5 @@ async def main():
 
 
 # Run event loop until main_task finishes
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())
 ```
