@@ -29,7 +29,7 @@ jobs:
         pip install coverage codecov
     - name: Test with coverage + unittest
       run: |
-        coverage run --source=pulsectl_asyncio,examples -m unittest
+        coverage run --source=pulsectl_asyncio,examples -m unittest -v
     - name: Report test coverage
       if: ${{ always() }}
       run: |
