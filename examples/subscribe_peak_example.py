@@ -23,6 +23,7 @@ async def main():
         source_name = default_sink_info.monitor_source_name
 
         # Start listening/monitoring task
+        loop = asyncio.get_event_loop()
         listen_task = loop.create_task(listen(pulse, source_name))
 
         # Schedule listen_task to be cancelled after 10 seconds
@@ -39,5 +40,4 @@ async def main():
 
 
 # Run event loop until main_task finishes
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())

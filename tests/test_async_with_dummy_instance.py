@@ -10,7 +10,6 @@ Copyright (c) 2016 Mike Kazantsev, 2021 Michael Thies
 """
 import asyncio
 import atexit
-import functools
 import os
 import signal
 import sys
@@ -22,18 +21,7 @@ from pulsectl.pulsectl import unicode
 from pulsectl.tests.test_with_dummy_instance import dummy_pulse_init, dummy_pulse_cleanup
 
 
-def async_test(f):
-	"""
-	Decorator to transform async unittest coroutines into normal test methods
-	"""
-	@functools.wraps(f)
-	def wrapper(*args, **kwargs):
-		loop = asyncio.get_event_loop()
-		loop.run_until_complete(f(*args, **kwargs))
-	return wrapper
-
-
-class AsyncDummyTests(unittest.TestCase):
+class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 
 	proc = tmp_dir = None
 
@@ -67,7 +55,6 @@ class AsyncDummyTests(unittest.TestCase):
 		self.addTypeEqualityFunc(float, self._compare_floats)
 
 
-	@async_test
 	async def test_connect(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -82,7 +69,6 @@ class AsyncDummyTests(unittest.TestCase):
 				si6 = await pulse.server_info()
 			self.assertEqual(vars(si), vars(si6))
 
-	@async_test
 	async def test_connect_timeout(self):
 		self.sock_delay_thread_ready.wait(timeout=2)
 		async with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
@@ -114,7 +100,6 @@ class AsyncDummyTests(unittest.TestCase):
 		self.assertEqual(vars(si), vars(sid))
 		self.sock_delay_thread_disco.set()
 
-	@async_test
 	async def test_server_info(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -122,7 +107,6 @@ class AsyncDummyTests(unittest.TestCase):
 		self.assertEqual(len(srcs), 2)
 		self.assertEqual(len(sinks), 2)
 
-	@async_test
 	async def test_default_set(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -165,7 +149,6 @@ class AsyncDummyTests(unittest.TestCase):
 			self.assertEqual(si.default_sink_name, sink2.name)
 			self.assertEqual(si.default_source_name, src1.name)
 
-	@async_test
 	async def test_events(self):
 		with pulsectl_asyncio.PulseAsync ('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -187,7 +170,6 @@ class AsyncDummyTests(unittest.TestCase):
 			self.assertTrue(bool(cb_called))
 			self.assertIsNone(pulse.event_callback)
 
-	@async_test
 	async def test_sink_src(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -228,7 +210,6 @@ class AsyncDummyTests(unittest.TestCase):
 			self.assertEqual((await pulse.sink_info(sink.index)).volume.values, sink.volume.values)
 			await pulse.volume_set_all_chans(sink, 1.0)
 
-	@async_test
 	async def test_get_sink_src(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -242,7 +223,6 @@ class AsyncDummyTests(unittest.TestCase):
 
 	# def test_get_card(self): no cards to test these calls with :(
 
-	@async_test
 	async def test_module_funcs(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -255,7 +235,6 @@ class AsyncDummyTests(unittest.TestCase):
 				await pulse.module_load('module-that-does-not-exist')
 			self.assertEqual(len(await pulse.sink_list()), 2)
 
-	@async_test
 	async def test_stream(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -311,7 +290,6 @@ class AsyncDummyTests(unittest.TestCase):
 			with self.assertRaises(pulsectl.PulseIndexError):
 				await pulse.sink_input_info(stream.index)
 
-	@async_test
 	async def test_ext_stream_restore(self):
 		sr_name1 = 'sink-input-by-application-name:pulsectl-test-1'
 		sr_name2 = 'sink-input-by-application-name:pulsectl-test-2'
@@ -369,7 +347,6 @@ class AsyncDummyTests(unittest.TestCase):
 			self.assertNotIn(sr_name1, sr_dict)
 			self.assertNotIn(sr_name2, sr_dict)
 
-	@async_test
 	async def test_stream_move(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -417,7 +394,6 @@ class AsyncDummyTests(unittest.TestCase):
 					paplay.kill()
 				await paplay.wait()
 
-	@async_test
 	async def test_get_peak_sample(self):
 		# Note: this test takes at least multiple seconds to run
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
@@ -442,11 +418,13 @@ class AsyncDummyTests(unittest.TestCase):
 			loop = asyncio.get_event_loop()
 			loop.create_task(listen_stream_events())
 
+			# Wait a bit before starting paplay so that we are guaranteed to catch the event
+			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
 				'paplay', '--raw', '/dev/urandom', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
 			try:
-				await stream_started.wait()
+				await asyncio.wait_for(stream_started.wait(), 5)
 				self.assertTrue(bool(stream_idx))
 				stream_idx = stream_idx[0]
 				si = await pulse.sink_input_info(stream_idx)
@@ -476,14 +454,13 @@ class AsyncDummyTests(unittest.TestCase):
 				await paplay.wait()
 
 
-class PulseCrashTestsAsync(unittest.TestCase):
+class PulseCrashTestsAsync(unittest.IsolatedAsyncioTestCase):
 
 	@classmethod
 	def setUpClass(cls):
 		for sig in 'hup', 'term', 'int':
 			signal.signal(getattr(signal, 'sig{}'.format(sig).upper()), lambda sig,frm: sys.exit())
 
-	@async_test
 	async def test_crash_after_connect(self):
 		loop = asyncio.get_event_loop()
 		info = await loop.run_in_executor(None, dummy_pulse_init)
@@ -498,7 +475,6 @@ class PulseCrashTestsAsync(unittest.TestCase):
 				self.assertFalse(pulse.connected)
 		finally: await loop.run_in_executor(None, dummy_pulse_cleanup, info)
 
-	@async_test
 	async def test_reconnect(self):
 		loop = asyncio.get_event_loop()
 		info = await loop.run_in_executor(None, dummy_pulse_init)

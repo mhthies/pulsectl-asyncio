@@ -1,3 +1,36 @@
+[project]
+name = "pulsectl-asyncio"
+version = "1.2.2"
+urls = { source = "https://github.com/mhthies/pulsectl-asyncio" }
+authors = [{name="Michael Thies", email="mail@mhthies.de"}]
+description = "Asyncio frontend for the pulsectl Python bindings of libpulse"
+readme = "README.md"
+
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: AsyncIO",
+    "Topic :: Multimedia :: Sound/Audio :: Mixers",
+    "Operating System :: POSIX",
+    "Development Status :: 5 - Production/Stable",
+]
+
+requires-python = ">=3.6"
+dependencies = [
+    "pulsectl >=23.5.0,<=24.12.0"
+]
+
 [build-system]
-requires = ["setuptools >= 40.6.0", "wheel"]
+requires = ["setuptools >= 61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tools.setuptools]
+packages = ["pulsectl_asyncio"]
