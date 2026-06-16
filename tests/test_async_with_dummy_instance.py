@@ -418,11 +418,13 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			loop = asyncio.get_event_loop()
 			loop.create_task(listen_stream_events())
 
+			# Wait a bit before starting paplay so that we are guaranteed to catch the event
+			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
 				'paplay', '--raw', '/dev/urandom', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
 			try:
-				await stream_started.wait()
+				await asyncio.wait_for(stream_started.wait(), 5)
 				self.assertTrue(bool(stream_idx))
 				stream_idx = stream_idx[0]
 				si = await pulse.sink_input_info(stream_idx)
