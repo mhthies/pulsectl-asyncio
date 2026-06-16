@@ -521,7 +521,7 @@ class PulseAsync(object):
 				yield await self._wait_disconnect_or(queue.get())
 		finally:
 			self.event_callback = None
-			if self._connected.is_set():
+			if self._connected.is_set() and self._ctx is not None:
 				await self._event_mask_set('null')
 
 	async def get_peak_sample(self, source, timeout, stream_idx=None):
