@@ -11,6 +11,7 @@ Copyright (c) 2016 Mike Kazantsev, 2021 Michael Thies
 import asyncio
 import atexit
 import os
+import shutil
 import signal
 import sys
 import unittest
@@ -19,6 +20,9 @@ import pulsectl
 import pulsectl_asyncio
 from pulsectl.pulsectl import unicode
 from pulsectl.tests.test_with_dummy_instance import dummy_pulse_init, dummy_pulse_cleanup
+
+
+PAPLAY_EXECUTABLE = shutil.which("paplay")
 
 
 class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
@@ -235,6 +239,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 				await pulse.module_load('module-that-does-not-exist')
 			self.assertEqual(len(await pulse.sink_list()), 2)
 
+	@unittest.skipIf(PAPLAY_EXECUTABLE is None, "paplay executable not found")
 	async def test_stream(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -254,7 +259,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			# Wait a bit before starting paplay so that we are guaranteed to catch the event
 			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
-				'paplay', '--raw', '/dev/zero', env=dict(
+				PAPLAY_EXECUTABLE, '--raw', '/dev/zero', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
 			try:
 				await stream_started.wait()
@@ -349,6 +354,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			self.assertNotIn(sr_name1, sr_dict)
 			self.assertNotIn(sr_name2, sr_dict)
 
+	@unittest.skipIf(PAPLAY_EXECUTABLE is None, "paplay executable not found")
 	async def test_stream_move(self):
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
 			await pulse.connect()
@@ -368,7 +374,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			# Wait a bit before starting paplay so that we are guaranteed to catch the event
 			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
-				'paplay', '--raw', '/dev/zero', env=dict(
+				PAPLAY_EXECUTABLE, '--raw', '/dev/zero', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
 			try:
 				await stream_started.wait()
@@ -398,6 +404,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 					paplay.kill()
 				await paplay.wait()
 
+	@unittest.skipIf(PAPLAY_EXECUTABLE is None, "paplay executable not found")
 	async def test_get_peak_sample(self):
 		# Note: this test takes at least multiple seconds to run
 		with pulsectl_asyncio.PulseAsync('t', server=self.sock_unix) as pulse:
@@ -425,7 +432,7 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			# Wait a bit before starting paplay so that we are guaranteed to catch the event
 			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
-				'paplay', '--raw', '/dev/urandom', env=dict(
+				PAPLAY_EXECUTABLE, '--raw', '/dev/urandom', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
 			try:
 				await asyncio.wait_for(stream_started.wait(), 5)
