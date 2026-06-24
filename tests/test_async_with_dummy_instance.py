@@ -251,6 +251,8 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			loop = asyncio.get_event_loop()
 			loop.create_task(listen_stream_events())
 
+			# Wait a bit before starting paplay so that we are guaranteed to catch the event
+			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
 				'paplay', '--raw', '/dev/zero', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
@@ -363,6 +365,8 @@ class AsyncDummyTests(unittest.IsolatedAsyncioTestCase):
 			loop = asyncio.get_event_loop()
 			loop.create_task(listen_stream_events())
 
+			# Wait a bit before starting paplay so that we are guaranteed to catch the event
+			await asyncio.sleep(0.3)
 			paplay = await asyncio.create_subprocess_exec(
 				'paplay', '--raw', '/dev/zero', env=dict(
 					PATH=os.environ['PATH'], XDG_RUNTIME_DIR=self.tmp_dir))
